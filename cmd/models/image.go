@@ -5,6 +5,6 @@ import (
 )
 
 type Image struct {
-	ID    uuid.UUID `json:"id"`
-	Image string    `json:"image"`
+	ID    uuid.UUID `gorm:"primaryKey"`
+	Image string
 }

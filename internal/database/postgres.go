@@ -1,23 +1,33 @@
 package database
 
 import (
+	"backend/cmd/models"
+	"context"
 	"fmt"
-	"net/http"
-
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-
-	"backend/cmd/models"
+	"log"
 )
+
+type Connection interface {
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	// Begin starts a transaction block from the *Conn without explicitly setting a transaction mode (see BeginTx with TxOptions if transaction mode is required).
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
 
 var DB *gorm.DB
 
-func ConnectDatabase() {
+func ConnectDatabase(ctx context.Context) {
 	dsn := "host=localhost user=postgres dbname=backend port=5432"
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
-		panic("Failed to connect to database")
+		log.Fatal("Failed to connect to postgresql")
+		return
 	}
 
 	database.AutoMigrate(&models.Address{})
@@ -31,34 +41,40 @@ func ConnectDatabase() {
 	DB = database
 }
 
-func updateAddress(id string) {
+type repository struct {
+	context.Context
+	logger *logging.logger
+	// Pool
+}
+
+func (r *repository) updateAddress(id string) {
 
 }
 
 //      ------ Client CRUD -------
 
 // i. add client (json)
-func addClient(w http.ResponseWriter, r *http.Request) {
+func addClient() {
 
 }
 
 // ii. delete client (id)
-func deleteClient(w http.ResponseWriter, r *http.Request) {
+func deleteClient() {
 
 }
 
 // iii. get client by name and surname (name, surname)
-func getClient(w http.ResponseWriter, r *http.Request) {
+func getClient() {
 
 }
 
 // iv. get all clients (optional: limit, offset)
-func getAllClients(w http.ResponseWriter, r *http.Request) {
+func getAllClients() {
 
 }
 
 // v. update client's address (id, json - address)
-func updateClientAddress(w http.ResponseWriter, r *http.Request) {
+func updateClientAddress() {
 
 }
 

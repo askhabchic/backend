@@ -5,8 +5,8 @@ import (
 )
 
 type Supplier struct {
-	ID           uuid.UUID `json:"id"`
-	Name         string    `json:"name"`
-	Address_id   uuid.UUID `json:"address_id"`
-	Phone_number string    `json:"phone_number"`
+	ID          uuid.UUID `gorm:"primaryKey"`
+	Name        string
+	AddressId   uuid.UUID
+	PhoneNumber string
 }

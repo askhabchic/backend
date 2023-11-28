@@ -5,11 +5,11 @@ import (
 )
 
 type Client struct {
-	ID                uuid.UUID `json:"id"`
-	Name              string    `json:"client_name"`
-	Surname           string    `json:"client_surname"`
-	Birthday          string    `json:"birthday"`
-	Gender            bool      `json:"gender"`
-	Registration_date string    `json:"registration_date"`
-	Address_id        uuid.UUID `json:"address_id"`
+	ID               uuid.UUID `gorm:"primaryKey"`
+	Name             string
+	Surname          string
+	Birthday         string
+	Gender           bool
+	RegistrationDate string
+	AddressId        uuid.UUID
 }

@@ -4,13 +4,24 @@ import (
 	"backend/cmd/models"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
+
+func errorHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
 
 func (h *handler) updateAddress(id uuid.UUID, addr models.Address) {
 	for _, address := range h.Addresses {
@@ -28,7 +39,7 @@ func (h *handler) updateAddress(id uuid.UUID, addr models.Address) {
 // i. add client (json)
 func (h *handler) addClient(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var client models.Client
 	json.Unmarshal(reqBody, &client)
 
@@ -107,7 +118,7 @@ func (h *handler) updateClientAddress(w http.ResponseWriter, r *http.Request) {
 // i. add product (json)
 func (h *handler) addProduct(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var product models.Product
 	json.Unmarshal(reqBody, &product)
 	h.Products = append(h.Products, product)
@@ -132,7 +143,7 @@ func (h *handler) decreaseProductsAmount(w http.ResponseWriter, r *http.Request)
 				fmt.Println("Error during conversion")
 				return
 			}
-			prod.Available_stock -= amount
+			prod.AvailableStock -= amount
 			h.Products = append(h.Products, prod)
 			fmt.Println("Endpoint Hit: decreaseProductAmount")
 			json.NewEncoder(w).Encode(product)
@@ -185,7 +196,7 @@ func (h *handler) deleteProduct(w http.ResponseWriter, r *http.Request) {
 // i. add Supplier (json)
 func (h *handler) addSupplier(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var supplier models.Supplier
 	json.Unmarshal(reqBody, &supplier)
 	h.Suppliers = append(h.Suppliers, supplier)
@@ -255,7 +266,7 @@ func (h *handler) getSupplier(w http.ResponseWriter, r *http.Request) {
 // i. add Image (byte array, product's id)
 func (h *handler) addImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-	reqBody, _ := ioutil.ReadAll(r.Body)
+	reqBody, _ := io.ReadAll(r.Body)
 	var image models.Image
 	json.Unmarshal(reqBody, &image)
 	h.Images = append(h.Images, image)
@@ -306,7 +317,7 @@ func (h *handler) getImageByProductId(w http.ResponseWriter, r *http.Request) {
 	for _, product := range h.Products {
 		if product.ID == id {
 			for _, image := range h.Images {
-				if image.ID == product.Image_id {
+				if image.ID == product.ImageId {
 					json.NewEncoder(w).Encode(image)
 					return
 				}

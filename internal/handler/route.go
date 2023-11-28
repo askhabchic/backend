@@ -17,14 +17,15 @@ type handler struct {
 	Addresses []models.Address
 }
 
-func NewHendler() *handler {
+func NewHandler() *handler {
 	return &handler{}
 }
 
 func HandleRequests() {
 
 	myRouter := mux.NewRouter().StrictSlash(true)
-	h := NewHendler()
+	myRouter.Use(errorHandler)
+	h := NewHandler()
 	//  Route Handlers for Client
 
 	myRouter.HandleFunc("/client/{client_name}", h.getClient).Methods("GET")
