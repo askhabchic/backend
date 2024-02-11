@@ -1,4 +1,0 @@
-time="2024-02-10T20:59:57+03:00" level=info msg="create router in NewHandler" func="github.com/sirupsen/logrus.(*Entry).Info()" file="$s:%!d(string=entry.go)%!(EXTRA int=285)"
-time="2024-02-10T20:59:57+03:00" level=info msg="create config" func="github.com/sirupsen/logrus.(*Entry).Info()" file="$s:%!d(string=entry.go)%!(EXTRA int=285)"
-time="2024-02-10T20:59:57+03:00" level=info msg="read application configuration" func="github.com/sirupsen/logrus.(*Entry).Info()" file="$s:%!d(string=entry.go)%!(EXTRA int=285)"
-time="2024-02-10T20:59:57+03:00" level=info msg="connect to database" func="github.com/sirupsen/logrus.(*Entry).Info()" file="$s:%!d(string=entry.go)%!(EXTRA int=285)"
