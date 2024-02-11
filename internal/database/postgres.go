@@ -1,7 +1,12 @@
 package database
 
 import (
-	"backend/cmd/models"
+	"backend/internal/address"
+	"backend/internal/client"
+	"backend/internal/config"
+	"backend/internal/image"
+	"backend/internal/product"
+	"backend/internal/supplier"
 	"context"
 	"fmt"
 	"github.com/jackc/pgconn"
@@ -21,8 +26,9 @@ type Connection interface {
 
 var DB *gorm.DB
 
-func ConnectDatabase(ctx context.Context) {
-	dsn := "host=localhost user=postgres dbname=backend port=5432"
+func ConnectDatabase(cfg *config.Config) {
+	dsn := fmt.Sprintf("host=%s user=%s dbname=%s port=%s",
+		cfg.Storage.Host, cfg.Storage.Username, cfg.Storage.Database, cfg.Storage.Port)
 	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
@@ -30,11 +36,26 @@ func ConnectDatabase(ctx context.Context) {
 		return
 	}
 
-	database.AutoMigrate(&models.Address{})
-	database.AutoMigrate(&models.Image{})
-	database.AutoMigrate(&models.Supplier{})
-	database.AutoMigrate(&models.Client{})
-	database.AutoMigrate(&models.Product{})
+	errorMig := database.AutoMigrate(&address.Address{})
+	if errorMig != nil {
+		return
+	}
+	errorMig = database.AutoMigrate(&image.Image{})
+	if errorMig != nil {
+		return
+	}
+	errorMig = database.AutoMigrate(&supplier.Supplier{})
+	if errorMig != nil {
+		return
+	}
+	errorMig = database.AutoMigrate(&client.Client{})
+	if errorMig != nil {
+		return
+	}
+	errorMig = database.AutoMigrate(&product.Product{})
+	if errorMig != nil {
+		return
+	}
 
 	fmt.Println("Connect database")
 
@@ -43,7 +64,7 @@ func ConnectDatabase(ctx context.Context) {
 
 type repository struct {
 	context.Context
-	logger *logging.logger
+	//logger *logging.logger
 	// Pool
 }
 

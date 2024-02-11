@@ -1,7 +1,11 @@
 package handler
 
 import (
-	"backend/cmd/models"
+	"backend/internal/address"
+	"backend/internal/client"
+	"backend/internal/image"
+	"backend/internal/product"
+	"backend/internal/supplier"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,330 +16,435 @@ import (
 	"github.com/gorilla/mux"
 )
 
-func errorHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
-func (h *handler) updateAddress(id uuid.UUID, addr models.Address) {
-	for _, address := range h.Addresses {
-		if address.ID == id {
-			address.City = addr.City
-			address.Country = addr.Country
-			address.Street = addr.Street
+func (h *Handler) updateAddress(id uuid.UUID, addr address.Address) error {
+	for _, add := range h.Addresses {
+		if add.ID == id {
+			add.City = addr.City
+			add.Country = addr.Country
+			add.Street = addr.Street
 			break
 		}
 	}
+	return nil
 }
 
 //      ------ Client CRUD -------
 
 // i. add client (json)
-func (h *handler) addClient(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addClient(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	reqBody, _ := io.ReadAll(r.Body)
-	var client models.Client
-	json.Unmarshal(reqBody, &client)
+	var cl client.Client
+	err := json.Unmarshal(reqBody, &cl)
+	if err != nil {
+		return err
+	}
 
-	h.Clients = append(h.Clients, client)
+	h.Clients = append(h.Clients, cl)
 
 	fmt.Println("Endpoint Hit: addClient")
-	json.NewEncoder(w).Encode(client)
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(cl)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ii. delete client (id)
-func (h *handler) deleteClient(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteClient(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	for index, client := range h.Clients {
-		if client.ID == uuid.Must(uuid.Parse(id)) {
+	for index, cl := range h.Clients {
+		if cl.ID == uuid.Must(uuid.Parse(id)) {
 			h.Clients = append(h.Clients[:index], h.Clients[index+1:]...)
 			fmt.Println("Endpoint Hit: deleteClient")
 			break
 		}
 	}
-	json.NewEncoder(w).Encode(h.Clients)
+	w.WriteHeader(http.StatusNoContent)
+	err := json.NewEncoder(w).Encode(h.Clients)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // iii. get client by name and surname (name, surname)
-func (h *handler) getClient(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getClient(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	name := vars["name"]
 	surname := vars["surname"]
 
-	for _, client := range h.Clients {
-		if client.Name == name && client.Surname == surname {
+	for _, cli := range h.Clients {
+		if cli.Name == name && cli.Surname == surname {
 			fmt.Println("Endpoint Hit: getClient")
-			json.NewEncoder(w).Encode(client)
-			return
+			w.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(w).Encode(cli)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
+	return fmt.Errorf("client '%s %s' not found", name, surname)
 }
 
 // iv. get all clients (optional: limit, offset)
-func (h *handler) getAllClients(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getAllClients(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	//vars := mux.Vars(r)
 	//limit := vars["limit"]
 	//offset := vars["offset"]
 
 	fmt.Println("Endpoint Hit: getAllClients")
-	json.NewEncoder(w).Encode(h.Clients)
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(h.Clients)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // v. update client's address (id, json - address)
-func (h *handler) updateClientAddress(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) updateClientAddress(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for index, client := range h.Clients {
-		if client.ID == id {
+	for index, cl := range h.Clients {
+		if cl.ID == id {
 			h.Clients = append(h.Clients[:index], h.Clients[index+1:]...)
-			var addr models.Address
-			_ = json.NewDecoder(r.Body).Decode(&addr)
+			var addr address.Address
+			err := json.NewDecoder(r.Body).Decode(&addr)
+			if err != nil {
+				return err
+			}
 			h.updateAddress(id, addr)
 			h.Addresses = append(h.Addresses, addr)
 			fmt.Println("Endpoint Hit: updateClientAddress")
-			json.NewEncoder(w).Encode(addr)
-			return
+			w.WriteHeader(http.StatusOK)
+			err = json.NewEncoder(w).Encode(addr)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
+	return nil
 }
 
 //      ------ Client CRUD -------
 
 // ------ Product CRUD -------
 // i. add product (json)
-func (h *handler) addProduct(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addProduct(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	reqBody, _ := io.ReadAll(r.Body)
-	var product models.Product
-	json.Unmarshal(reqBody, &product)
-	h.Products = append(h.Products, product)
+	var prod product.Product
+	err := json.Unmarshal(reqBody, &prod)
+	if err != nil {
+		return err
+	}
+	h.Products = append(h.Products, prod)
 
 	fmt.Println("Endpoint Hit: addProduct")
-	json.NewEncoder(w).Encode(product)
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(prod)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ii. decrease available product's stock (id, amount)
-func (h *handler) decreaseProductsAmount(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) decreaseProductsAmount(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for index, product := range h.Products {
-		if product.ID == id {
+	for index, prod := range h.Products {
+		if prod.ID == id {
 			h.Products = append(h.Products[:index], h.Products[index+1:]...)
-			var prod models.Product
+			var prod product.Product
 			_ = json.NewDecoder(r.Body).Decode(&prod)
 			amount, err := strconv.Atoi(vars["amount"])
 			if err != nil {
-				fmt.Println("Error during conversion")
-				return
+				return err
 			}
 			prod.AvailableStock -= amount
 			h.Products = append(h.Products, prod)
 			fmt.Println("Endpoint Hit: decreaseProductAmount")
-			json.NewEncoder(w).Encode(product)
-			return
+			w.WriteHeader(http.StatusOK)
+			err = json.NewEncoder(w).Encode(prod)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
+	return nil
 }
 
 // iii. get product by ID (id)
-func (h *handler) getProduct(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getProduct(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for _, product := range h.Products {
-		if product.ID == id {
-			json.NewEncoder(w).Encode(product)
+	for _, prod := range h.Products {
+		if prod.ID == id {
+			w.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(w).Encode(prod)
+			if err != nil {
+				return err
+			}
 			fmt.Println("Endpoint Hit: getProduct")
-			return
+			return nil
 		}
 	}
+	return fmt.Errorf("product by ID=%d not found", id)
 }
 
 // iv. get all products ()
-func (h *handler) getAllProducts(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getAllProducts(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Println("Endpoint Hit: getAllProducts")
-	json.NewEncoder(w).Encode(h.Products)
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(h.Products)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // v. delete product (id)
-func (h *handler) deleteProduct(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteProduct(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for index, product := range h.Products {
-		if product.ID == id {
+	for index, prod := range h.Products {
+		if prod.ID == id {
 			h.Products = append(h.Products[:index], h.Products[index+1:]...)
+			w.WriteHeader(http.StatusNoContent)
 			fmt.Println("Endpoint Hit: deleteProduct")
 			break
 		}
 	}
-	json.NewEncoder(w).Encode(h.Products)
+	err := json.NewEncoder(w).Encode(h.Products)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //      ------ Product CRUD -------
 
 // ------ Supplier CRUD -------
 // i. add Supplier (json)
-func (h *handler) addSupplier(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addSupplier(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	reqBody, _ := io.ReadAll(r.Body)
-	var supplier models.Supplier
-	json.Unmarshal(reqBody, &supplier)
-	h.Suppliers = append(h.Suppliers, supplier)
+	var suppl supplier.Supplier
+	err := json.Unmarshal(reqBody, &suppl)
+	if err != nil {
+		return err
+	}
+	h.Suppliers = append(h.Suppliers, suppl)
 
 	fmt.Println("Endpoint Hit: addSupplier")
-	json.NewEncoder(w).Encode(supplier)
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(suppl)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ii. update Supplier's address (id, json)
-func (h *handler) updateSupplierAddress(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) updateSupplierAddress(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for index, supplier := range h.Suppliers {
-		if supplier.ID == id {
+	for index, suppl := range h.Suppliers {
+		if suppl.ID == id {
 			h.Suppliers = append(h.Suppliers[:index], h.Suppliers[index+1:]...)
-			var addr models.Address
+			var addr address.Address
 			_ = json.NewDecoder(r.Body).Decode(&addr)
 			h.updateAddress(id, addr)
 			h.Addresses = append(h.Addresses, addr)
 			fmt.Println("Endpoint Hit: updateClientAddress")
-			json.NewEncoder(w).Encode(addr)
-			return
+			w.WriteHeader(http.StatusNoContent)
+			err := json.NewEncoder(w).Encode(addr)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
+	return nil
 }
 
 // iii. delete Supplier by ID (id)
-func (h *handler) deleteSupplier(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteSupplier(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for index, supplier := range h.Suppliers {
-		if supplier.ID == id {
+	for index, suppl := range h.Suppliers {
+		if suppl.ID == id {
 			h.Suppliers = append(h.Suppliers[:index], h.Suppliers[index+1:]...)
 			break
 		}
 	}
-	json.NewEncoder(w).Encode(h.Suppliers)
+	w.WriteHeader(http.StatusNoContent)
+	err := json.NewEncoder(w).Encode(h.Suppliers)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // iv. get all suppliers
-func (h *handler) getAllSuppliers(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getAllSuppliers(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.Suppliers)
+	w.WriteHeader(http.StatusOK)
+	err := json.NewEncoder(w).Encode(h.Suppliers)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // v. get supplier by ID (id)
-func (h *handler) getSupplier(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getSupplier(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for _, supplier := range h.Suppliers {
-		if supplier.ID == id {
-			json.NewEncoder(w).Encode(supplier)
-			return
+	for _, suppl := range h.Suppliers {
+		if suppl.ID == id {
+			w.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(w).Encode(suppl)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
+	return fmt.Errorf("supplier by ID=%d not found", id)
 }
 
 //      ------ Supplier CRUD -------
 
 // ------ Image CRUD -------
 // i. add Image (byte array, product's id)
-func (h *handler) addImage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addImage(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	reqBody, _ := io.ReadAll(r.Body)
-	var image models.Image
-	json.Unmarshal(reqBody, &image)
-	h.Images = append(h.Images, image)
-
-	json.NewEncoder(w).Encode(image)
+	var img image.Image
+	err := json.Unmarshal(reqBody, &img)
+	if err != nil {
+		return err
+	}
+	h.Images = append(h.Images, img)
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(img)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // ii. update Image (image's id, string)
-func (h *handler) updateImage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) updateImage(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for index, image := range h.Images {
-		if image.ID == id {
+	for index, img := range h.Images {
+		if img.ID == id {
 			h.Images = append(h.Images[:index], h.Images[index+1:]...)
-			var img models.Image
-			_ = json.NewDecoder(r.Body).Decode(&img)
+			var img image.Image
+			err := json.NewDecoder(r.Body).Decode(&img)
+			if err != nil {
+				return err
+			}
 			img.Image = vars["image"]
 			h.Images = append(h.Images, img)
-			json.NewEncoder(w).Encode(img)
-			return
+			w.WriteHeader(http.StatusNoContent)
+			err = json.NewEncoder(w).Encode(img)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
+	return nil
 }
 
 // iii. delete image by ID (id)
-func (h *handler) deleteImage(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) deleteImage(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for index, image := range h.Images {
-		if image.ID == id {
+	for index, img := range h.Images {
+		if img.ID == id {
 			h.Images = append(h.Images[:index], h.Images[index+1:]...)
 			break
 		}
 	}
-	json.NewEncoder(w).Encode(h.Images)
+	w.WriteHeader(http.StatusNoContent)
+	err := json.NewEncoder(w).Encode(h.Images)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // iv. get image by product's ID (id)
-func (h *handler) getImageByProductId(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getImageByProductId(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for _, product := range h.Products {
-		if product.ID == id {
-			for _, image := range h.Images {
-				if image.ID == product.ImageId {
-					json.NewEncoder(w).Encode(image)
-					return
+	for _, prod := range h.Products {
+		if prod.ID == id {
+			for _, img := range h.Images {
+				if img.ID == prod.ImageId {
+					err := json.NewEncoder(w).Encode(img)
+					if err != nil {
+						return err
+					}
+					return nil
 				}
 			}
 		}
 	}
+	return fmt.Errorf("image by Product ID=%d not found", id)
 }
 
 // v. get image by image's ID
-func (h *handler) getImageById(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) getImageById(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	vars := mux.Vars(r)
 	id := uuid.Must(uuid.Parse(vars["id"]))
 
-	for _, image := range h.Images {
-		if image.ID == id {
-			json.NewEncoder(w).Encode(image)
-			return
+	for _, img := range h.Images {
+		if img.ID == id {
+			w.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(w).Encode(img)
+			if err != nil {
+				return err
+			}
+			return nil
 		}
 	}
+	return fmt.Errorf("image by ID=%d not found", id)
 }

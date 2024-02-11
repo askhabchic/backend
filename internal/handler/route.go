@@ -1,59 +1,78 @@
 package handler
 
 import (
+	"backend/internal/apperror"
+	"backend/internal/config"
+	"backend/internal/image"
+	"backend/internal/product"
+	"backend/internal/supplier"
+	"backend/pkg/logging"
 	"log"
 	"net/http"
 
-	"backend/cmd/models"
+	"backend/internal/address"
+	"backend/internal/client"
 
 	"github.com/gorilla/mux"
 )
 
-type handler struct {
-	Clients   []models.Client
-	Products  []models.Product
-	Images    []models.Image
-	Suppliers []models.Supplier
-	Addresses []models.Address
+const (
+	clientURLName   = "/client/{client_name}"
+	clientURL       = "/client/:uuid"
+	clientsURL      = "/clients"
+	productURL      = "/product/:uuid"
+	productsURL     = "/products"
+	supplierURL     = "/supplier/:uuid"
+	suppliersURL    = "/suppliers"
+	imageURL        = "/image/:uuid"
+	imagesURL       = "/image"
+	imageProductURL = "/image/{product}/{image_id}"
+)
+
+type Handler struct {
+	Clients   []client.Client
+	Products  []product.Product
+	Images    []image.Image
+	Suppliers []supplier.Supplier
+	Addresses []address.Address
 }
 
-func NewHandler() *handler {
-	return &handler{}
+func NewHandler() *Handler {
+	return &Handler{}
 }
 
-func HandleRequests() {
+func HandleRequests(logger *logging.Logger, cfg *config.Config) {
 
 	myRouter := mux.NewRouter().StrictSlash(true)
-	myRouter.Use(errorHandler)
 	h := NewHandler()
-	//  Route Handlers for Client
 
-	myRouter.HandleFunc("/client/{client_name}", h.getClient).Methods("GET")
-	myRouter.HandleFunc("/clients", h.getAllClients).Methods("GET")
-	myRouter.HandleFunc("/client", h.addClient).Methods("POST")
-	myRouter.HandleFunc("/client/{id}", h.updateClientAddress).Methods("PUT")
-	myRouter.HandleFunc("/client/{id}", h.deleteClient).Methods("DELETE")
+	//  Route Handlers for Client
+	myRouter.Handle(clientURLName, apperror.Middleware(h.getClient)).Methods("GET")
+	myRouter.HandleFunc(clientsURL, apperror.Middleware(h.getAllClients)).Methods("GET")
+	myRouter.HandleFunc(clientsURL, apperror.Middleware(h.addClient)).Methods("POST")
+	myRouter.HandleFunc(clientURL, apperror.Middleware(h.updateClientAddress)).Methods("PATCH")
+	myRouter.HandleFunc(clientURL, apperror.Middleware(h.deleteClient)).Methods("DELETE")
 
 	//  Route Handlers for Product
-	myRouter.HandleFunc("/product/{id}", h.getProduct).Methods("GET")
-	myRouter.HandleFunc("/products", h.getAllProducts).Methods("GET")
-	myRouter.HandleFunc("/product", h.addProduct).Methods("POST")
-	myRouter.HandleFunc("/product/{id}", h.decreaseProductsAmount).Methods("PUT")
-	myRouter.HandleFunc("/product/{id}", h.deleteProduct).Methods("DELETE")
+	myRouter.HandleFunc(productURL, apperror.Middleware(h.getProduct)).Methods("GET")
+	myRouter.HandleFunc(productsURL, apperror.Middleware(h.getAllProducts)).Methods("GET")
+	myRouter.HandleFunc(productsURL, apperror.Middleware(h.addProduct)).Methods("POST")
+	myRouter.HandleFunc(productURL, apperror.Middleware(h.decreaseProductsAmount)).Methods("PATCH")
+	myRouter.HandleFunc(productURL, apperror.Middleware(h.deleteProduct)).Methods("DELETE")
 
 	//  Route Handlers for Supplier
-	myRouter.HandleFunc("/supplier/{id}", h.getSupplier).Methods("GET")
-	myRouter.HandleFunc("/suppliers", h.getAllSuppliers).Methods("GET")
-	myRouter.HandleFunc("/supplier", h.addSupplier).Methods("POST")
-	myRouter.HandleFunc("/supplier/{id}", h.updateSupplierAddress).Methods("PUT")
-	myRouter.HandleFunc("/supplier/{id}", h.deleteSupplier).Methods("DELETE")
+	myRouter.HandleFunc(supplierURL, apperror.Middleware(h.getSupplier)).Methods("GET")
+	myRouter.HandleFunc(suppliersURL, apperror.Middleware(h.getAllSuppliers)).Methods("GET")
+	myRouter.HandleFunc(suppliersURL, apperror.Middleware(h.addSupplier)).Methods("POST")
+	myRouter.HandleFunc(supplierURL, apperror.Middleware(h.updateSupplierAddress)).Methods("PATCH")
+	myRouter.HandleFunc(supplierURL, apperror.Middleware(h.deleteSupplier)).Methods("DELETE")
 
 	//  Route Handlers for Image
-	myRouter.HandleFunc("/image/{id}", h.getSupplier).Methods("GET")
-	myRouter.HandleFunc("/image/{product}/{image_id}", h.getImageByProductId).Methods("GET")
-	myRouter.HandleFunc("/image/{}", h.addImage).Methods("POST")
-	myRouter.HandleFunc("/image/{id}", h.updateImage).Methods("PUT")
-	myRouter.HandleFunc("/image/{id}", h.deleteImage).Methods("DELETE")
+	myRouter.HandleFunc(imageURL, apperror.Middleware(h.getSupplier)).Methods("GET")
+	myRouter.HandleFunc(imageProductURL, apperror.Middleware(h.getImageByProductId)).Methods("GET")
+	myRouter.HandleFunc(imagesURL, apperror.Middleware(h.addImage)).Methods("POST")
+	myRouter.HandleFunc(imageURL, apperror.Middleware(h.updateImage)).Methods("PUT")
+	myRouter.HandleFunc(imageURL, apperror.Middleware(h.deleteImage)).Methods("DELETE")
 
-	log.Fatal(http.ListenAndServe(":8000", myRouter))
+	log.Fatal(http.ListenAndServe(":"+cfg.Listen.Port, myRouter))
 }
