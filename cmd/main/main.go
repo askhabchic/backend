@@ -2,53 +2,39 @@ package main
 
 import (
 	"backend/internal/config"
-	"backend/internal/database"
-	hh "backend/internal/handler"
+	"backend/pkg/client/postgresql"
 	"backend/pkg/logging"
+	"github.com/gorilla/mux"
+	"net/http"
 )
 
 func main() {
-
-	// s := Server{}
-	// s.Run(":8000")
 	logger := logging.GetLogger()
-	logger.Info("create router in NewHandler")
-	//h := hh.NewHandler()
 
 	logger.Info("create config")
 	cfg := config.GetConfig()
 
+	logger.Info("create router")
+	NewRouter(logger, cfg)
+
 	logger.Info("connect to database")
-	database.ConnectDatabase(cfg)
+	//newClient, err := postgresql.NewClient(context.Background(), 5, cfg)
 
-	//currentTime := time.Now()
-	//h.Clients = []client.Client{
-	//	client.Client{ID: uuid.New(),
-	//		Name:             "Joe",
-	//		Surname:          "Jonas",
-	//		Birthday:         "1991-01-23",
-	//		Gender:           false,
-	//		RegistrationDate: currentTime.String(),
-	//		AddressId:        uuid.New(),
-	//	},
-	//	client.Client{ID: uuid.New(),
-	//		Name:             "Nick",
-	//		Surname:          "Jonas",
-	//		Birthday:         "1993-07-12",
-	//		Gender:           false,
-	//		RegistrationDate: currentTime.String(),
-	//		AddressId:        uuid.New(),
-	//	},
-	//	client.Client{ID: uuid.New(),
-	//		Name:             "Kevin",
-	//		Surname:          "Jonas",
-	//		Birthday:         "1990-02-04",
-	//		Gender:           false,
-	//		RegistrationDate: currentTime.String(),
-	//		AddressId:        uuid.New(),
-	//	},
-	//}
+	logger.Info("create tables in DB")
+	db, err := postgresql.ConnectDatabase(cfg)
+	if err != nil {
+		logger.Fatalf("Error: %v", err)
+	}
 
-	hh.HandleRequests(logger, cfg)
+	//handler := client.NewHandler(logger)
 
+	if err != nil {
+		logger.Errorf("Failed to connect database: %s", err)
+	}
+
+}
+
+func NewRouter(logger *logging.Logger, cfg *config.Config) {
+	myRouter := mux.NewRouter().StrictSlash(true)
+	logger.Info(http.ListenAndServe(":"+cfg.Listen.Port, myRouter))
 }

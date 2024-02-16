@@ -24,79 +24,26 @@ type Connection interface {
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
 
-var DB *gorm.DB
-
-func ConnectDatabase(cfg *config.Config) {
+func ConnectDatabase(cfg *config.Config) (*gorm.DB, error) {
 	dsn := fmt.Sprintf("host=%s user=%s dbname=%s port=%s",
 		cfg.Storage.Host, cfg.Storage.Username, cfg.Storage.Database, cfg.Storage.Port)
-	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 
 	if err != nil {
 		log.Fatal("Failed to connect to postgresql")
-		return
+		return &gorm.DB{}, err
 	}
 
-	errorMig := database.AutoMigrate(&address.Address{})
+	errorMig := db.AutoMigrate(&address.Address{})
+	errorMig = db.AutoMigrate(&image.Image{})
+	errorMig = db.AutoMigrate(&supplier.Supplier{})
+	errorMig = db.AutoMigrate(&client.Client{})
+	errorMig = db.AutoMigrate(&product.Product{})
 	if errorMig != nil {
-		return
-	}
-	errorMig = database.AutoMigrate(&image.Image{})
-	if errorMig != nil {
-		return
-	}
-	errorMig = database.AutoMigrate(&supplier.Supplier{})
-	if errorMig != nil {
-		return
-	}
-	errorMig = database.AutoMigrate(&client.Client{})
-	if errorMig != nil {
-		return
-	}
-	errorMig = database.AutoMigrate(&product.Product{})
-	if errorMig != nil {
-		return
+		log.Fatal("Failed to AutoMigrate to postgresql")
+		return &gorm.DB{}, err
 	}
 
-	fmt.Println("Connect database")
-
-	DB = database
+	fmt.Println("Connected to database. AutoMigrate is done")
+	return db, nil
 }
-
-type repository struct {
-	context.Context
-	//logger *logging.logger
-	// Pool
-}
-
-func (r *repository) updateAddress(id string) {
-
-}
-
-//      ------ Client CRUD -------
-
-// i. add client (json)
-func addClient() {
-
-}
-
-// ii. delete client (id)
-func deleteClient() {
-
-}
-
-// iii. get client by name and surname (name, surname)
-func getClient() {
-
-}
-
-// iv. get all clients (optional: limit, offset)
-func getAllClients() {
-
-}
-
-// v. update client's address (id, json - address)
-func updateClientAddress() {
-
-}
-
-//      ------ Client CRUD -------

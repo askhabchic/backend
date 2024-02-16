@@ -1,15 +1,28 @@
 package handler
 
 import (
+<<<<<<< HEAD
+	"backend/internal/config"
+=======
 	"backend/internal/apperror"
 	"backend/internal/config"
 	"backend/internal/image"
 	"backend/internal/product"
 	"backend/internal/supplier"
+>>>>>>> ac96bf5b98ac830e992a085f7399d2bb1bda3c6f
 	"backend/pkg/logging"
 	"log"
 	"net/http"
 
+<<<<<<< HEAD
+	"github.com/gorilla/mux"
+)
+
+func HandleRequests(logger *logging.Logger, cfg *config.Config) {
+
+	myRouter := mux.NewRouter().StrictSlash(true)
+	//h := NewHandler()
+=======
 	"backend/internal/address"
 	"backend/internal/client"
 
@@ -73,6 +86,7 @@ func HandleRequests(logger *logging.Logger, cfg *config.Config) {
 	myRouter.HandleFunc(imagesURL, apperror.Middleware(h.addImage)).Methods("POST")
 	myRouter.HandleFunc(imageURL, apperror.Middleware(h.updateImage)).Methods("PUT")
 	myRouter.HandleFunc(imageURL, apperror.Middleware(h.deleteImage)).Methods("DELETE")
+>>>>>>> ac96bf5b98ac830e992a085f7399d2bb1bda3c6f
 
 	log.Fatal(http.ListenAndServe(":"+cfg.Listen.Port, myRouter))
 }
